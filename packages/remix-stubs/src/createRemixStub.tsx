@@ -1,82 +1,116 @@
+import React from "react";
 import { RemixEntry } from "@remix-run/react/dist/components";
-import type { AssetsManifest } from "@remix-run/react/dist/entry";
-import type { EntryContext } from "@remix-run/react/dist/entry";
+import { createMemoryHistory } from "history";
+import {
+  unstable_createStaticHandler as createStaticHandler,
+  StaticHandler,
+  LoaderFunction,
+  ActionFunction,
+  matchRoutes,
+  Location,
+} from "@remix-run/router";
+
+import type { AssetsManifest, EntryContext } from "@remix-run/react/dist/entry";
 import type { RouteData } from "@remix-run/react/dist/routeData";
-import type { RouteMatch } from "@remix-run/react/dist/routeMatching";
 import type {
   CatchBoundaryComponent,
   RouteModules,
-  ShouldReloadFunction,
 } from "@remix-run/react/dist/routeModules";
+import type { EntryRoute, RouteManifest } from "@remix-run/react/dist/routes";
+import type { ShouldReloadFunction } from "@remix-run/react";
 import type {
-  ClientRoute,
-  EntryRoute,
-  RouteManifest,
-} from "@remix-run/react/dist/routes";
-import type {
-  ActionFunction,
   ErrorBoundaryComponent,
-  HeadersFunction,
-  LoaderFunction,
-  RequestHandler,
-  ServerBuild,
+  LinksFunction,
+  MetaFunction,
 } from "@remix-run/server-runtime";
-import { createRequestHandler } from "@remix-run/server-runtime";
-import { matchServerRoutes } from "@remix-run/server-runtime/dist/routeMatching";
-import { InitialEntry } from "@remix-run/server-runtime/dist/router";
-import type {
-  ServerRoute,
-  ServerRouteManifest,
-} from "@remix-run/server-runtime/dist/routes";
-import type { BrowserHistory, Update } from "history";
-import { createMemoryHistory } from "history";
-import React from "react";
+import type { InitialEntry } from "@remix-run/router";
+import type { MemoryHistory, Update } from "history";
 
-type MockRoute = {
+/**
+ * Base RouteObject with common props shared by all types of mock routes
+ */
+type BaseMockRouteObject = {
+  caseSensitive?: boolean;
   path: string;
+  element?: React.ReactNode | null;
   loader?: LoaderFunction;
   action?: ActionFunction;
-  headers?: HeadersFunction;
-  shouldReload?: ShouldReloadFunction;
+  links?: LinksFunction;
+  meta?: MetaFunction;
+  handle?: any;
   CatchBoundary?: CatchBoundaryComponent;
   ErrorBoundary?: ErrorBoundaryComponent;
-  children?: ClientRoute[];
-  element?: React.FC;
-  hasLoader?: boolean;
+  unstable_shouldReload?: ShouldReloadFunction;
 };
+
+/**
+ * Index routes must not have children
+ */
+export declare type MockIndexRouteObject = BaseMockRouteObject & {
+  children?: undefined;
+  index: true;
+};
+
+/**
+ * Non-index routes may have children, but cannot have index
+ */
+export declare type MockNonIndexRouteObject = BaseMockRouteObject & {
+  children?: MockRouteObject[];
+  index?: false;
+};
+
+/**
+ * A route object represents a logical route, with (optionally) its child
+ * routes organized in a tree-like structure.
+ */
+export declare type MockRouteObject =
+  | MockIndexRouteObject
+  | MockNonIndexRouteObject;
 
 type RemixStubOptions = {
   /**
-   *  Used to to pre-seed the browser's history with some URLs. The initial URL defaults to the last item in initialEntries unless initialIndex is set.
+   *  The initial entries in the history stack. This allows you to start a test with
+   *  multiple locations already in the history stack (for testing a back navigation, etc.)
+   *  The test will default to the last entry in initialEntries if no initialIndex is provided.
    *  e.g. initialEntries-(["/home", "/about", "/contact"]}
    */
   initialEntries?: InitialEntry[];
 
   /**
    *  Used to set the route's initial loader data.
-   *  e.g. initialLoaderData={("/login": {locale: "en-US" }}
+   *  e.g. initialLoaderData={("/contact": {locale: "en-US" }}
    */
   initialLoaderData?: RouteData;
 
   /**
-   * The index to use as the current browser location in the array of passed initialEntries. 
+   *  Used to set the route's initial action data.
+   *  e.g. initialActionData={("/login": { errors: { email: "invalid email" } }}
+   */
+  initialActionData?: RouteData;
+
+  /**
+   * The initial index in the history stack to render. This allows you to start a test at a specific entry.
+   * It defaults to the last entry in initialEntries.
+   * e.g.
+   *   initialEntries: ["/", "/events/123"]
+   *   initialIndex: 1 // start at "/events/123"
    */
   initialIndex?: number;
 };
 
-export function createRemixStub(routes: MockRoute[]) {
+export function createRemixStub(routes: MockRouteObject[]) {
   return function RemixStub({
     initialEntries = ["/"],
     initialLoaderData = {},
+    initialActionData,
     initialIndex,
   }: RemixStubOptions) {
-
-    const historyRef = React.useRef<BrowserHistory>();
+    const historyRef = React.useRef<MemoryHistory>();
 
     if (historyRef.current == null) {
       historyRef.current = createMemoryHistory({
         initialEntries: initialEntries,
-        initialIndex: initialIndex
+        initialIndex: initialIndex,
       });
     }
 
@@ -91,41 +125,23 @@ export function createRemixStub(routes: MockRoute[]) {
 
     React.useLayoutEffect(() => history.listen(dispatch), [history]);
 
-    // Create mock remix entry context
-    const entryContext = createRemixContext(
+    // Create mock remix context
+    const remixContext = createRemixContext(
       routes,
-      initialEntries,
-      initialLoaderData
+      state.location,
+      initialLoaderData,
+      initialActionData
     );
 
-    // Setup request handler for the mock routes to handle requests
-    const build: ServerBuild = {
-      entry: {
-        module: {
-          default: () => {
-            return new Response("Document loads not supported.", {
-              status: 500,
-              headers: {
-                "Content-Type": "text/plain",
-              },
-            });
-          },
-          handleDataRequest: undefined,
-        },
-      },
-      routes: createServerRouteManifest(routes),
-      assets: entryContext.manifest,
-      publicPath: "",
-      assetsBuildDirectory: "",
-    };
+    // Setup request handler to handle requests to the mock routes
+    let handler = createStaticHandler(routes);
 
     // Patch fetch so that mock routes can handle action/loader requests
-    const mockRequestHandler = createRequestHandler(build);
-    monkeyPatchFetch(mockRequestHandler);
+    monkeyPatchFetch(handler);
 
     return (
       <RemixEntry
-        context={entryContext}
+        context={remixContext}
         action={state.action}
         location={state.location}
         navigator={history}
@@ -135,24 +151,15 @@ export function createRemixStub(routes: MockRoute[]) {
 }
 
 function createRemixContext(
-  routes: MockRoute[],
-  initialEntries: InitialEntry[],
-  initialLoaderData: RouteData
+  routes: MockRouteObject[],
+  currentLocation: Location,
+  initialLoaderData: RouteData,
+  initialActionData?: RouteData
 ): EntryContext {
-  const location = initialEntries[0];
-  const pathname = typeof location === "string" ? location : location.pathname;
-
-  if(!pathname) {
-    throw new Error("initialEntries");
-  } 
-
-  const matches = matchServerRoutes(
-    routes as unknown as ServerRoute[],
-    pathname
-  );
+  const matches = matchRoutes(routes, currentLocation.pathname);
 
   return {
-    actionData: undefined,
+    actionData: initialActionData,
     appState: {
       trackBoundaries: true,
       trackCatchBoundaries: true,
@@ -162,14 +169,14 @@ function createRemixContext(
       error: undefined,
       catch: undefined,
     },
-    matches: matches as unknown as RouteMatch<EntryRoute>[],
+    matches: matches as unknown as EntryContext["matches"],
     routeData: initialLoaderData,
     manifest: createManifest(routes),
     routeModules: createRouteModules(routes),
   };
 }
 
-function createManifest(routes: MockRoute[]): AssetsManifest {
+function createManifest(routes: MockRouteObject[]): AssetsManifest {
   return {
     routes: routes.reduce((manifest, route) => {
       manifest[route.path] = {
@@ -189,52 +196,39 @@ function createManifest(routes: MockRoute[]): AssetsManifest {
   };
 }
 
-function DefaultComponent() {
-  return null;
-}
-
-function createRouteModules(routes: MockRoute[]): RouteModules {
+function createRouteModules(routes: MockRouteObject[]): RouteModules {
   return routes.reduce((modules, route) => {
     modules[route.path] = {
       CatchBoundary: route.CatchBoundary,
       ErrorBoundary: route.ErrorBoundary,
-      default: route.element || DefaultComponent,
+      default: () => <>{route.element}</>,
+      handle: route.handle,
+      links: route.links,
+      meta: route.meta,
+      unstable_shouldReload: route.unstable_shouldReload,
     };
     return modules;
   }, {} as RouteModules);
 }
 
-function createServerRouteManifest(routes: MockRoute[]): ServerRouteManifest {
-  return routes.reduce((manifest, route) => {
-    manifest[route.path] = {
-      id: route.path,
-      path: route.path,
-      module: {
-        default: route.element || DefaultComponent,
-        action: route.action,
-        headers: route.headers,
-        loader: route.loader,
-      },
-    };
-    return manifest;
-  }, {} as ServerRouteManifest);
-}
-
-function monkeyPatchFetch(mockRequestHandler: RequestHandler) {
-  const originalFetch = global.fetch ?? window.fetch;
-  global.fetch = window.fetch = async (
+function monkeyPatchFetch(handler: StaticHandler) {
+  const originalFetch = window.fetch;
+  window.fetch = async (
     input: RequestInfo | URL,
-    init?: RequestInit
+    init: RequestInit = {}
   ): Promise<Response> => {
-    // Pass the request through to mock routes.
     const request = new Request(input, init);
-    const response = await mockRequestHandler(request);
-
-    // 404 or 405 passthrough to the original fetch as mock routes can't handle the request.
-    if (response.status === 484 || response.status === 405) {
-      return originalFetch(input, init);
+    try {
+      // Send the request to mock routes via @remix-run/router.
+      return await handler.queryRoute(request);
+    } catch (error) {
+      if (error instanceof Response) {
+        // 404 or 405 responses passthrough to the original fetch as mock routes couldn't handle the request.
+        if (error.status === 404 || error.status === 405) {
+          return originalFetch(input, init);
+        }
+      }
+      throw error;
     }
-
-    return response;
   };
 }

@@ -14,8 +14,7 @@
   },
   "devDependencies": {
     "prettier": "latest",
-    "turbo": "latest",
-    "@types/node": "latest"
+    "turbo": "latest"
   },
   "engines": {
     "node": ">=14.0.0"
