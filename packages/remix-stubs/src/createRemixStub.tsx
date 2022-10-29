@@ -133,8 +133,12 @@ export function createRemixStub(routes: MockRouteObject[]) {
       initialActionData
     );
 
+    // Mock the window location
+    // TODO: Will this work everywhere?
+    window.location.assign("https://unknown/" + state.location.pathname);
+
     // Setup request handler to handle requests to the mock routes
-    let handler = createStaticHandler(routes);
+    const handler = createStaticHandler(routes);
 
     // Patch fetch so that mock routes can handle action/loader requests
     monkeyPatchFetch(handler);

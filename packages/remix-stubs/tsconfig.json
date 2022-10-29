@@ -1,5 +1,5 @@
 {
-  "extends": "tsconfig/react-library.json",
+  "extends": "tsconfig/base.json",
   "include": ["remix.env.d.ts", "**/*.ts", "**/*.tsx"],
   "exclude": ["dist", "build", "node_modules"],
   "compilerOptions": {
