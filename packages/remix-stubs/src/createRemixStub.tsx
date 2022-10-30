@@ -1,7 +1,6 @@
 import React from "react";
-import { RemixEntry } from "@remix-run/react/dist/components";
-import { createMemoryHistory } from "history";
 import {
+  createMemoryHistory,
   unstable_createStaticHandler as createStaticHandler,
   StaticHandler,
   LoaderFunction,
@@ -10,6 +9,18 @@ import {
   Location,
 } from "@remix-run/router";
 
+// FIX: This nested import breaks vite's dev bundling and needs a workaround in /.storybook/main.ts
+//      Hopefully an equivalent will be properly exported in Remix v2.
+import { RemixEntry } from "@remix-run/react/dist/components";
+
+import type { ShouldReloadFunction } from "@remix-run/react";
+import type {
+  ErrorBoundaryComponent,
+  LinksFunction,
+  MetaFunction,
+} from "@remix-run/server-runtime";
+import type { InitialEntry, MemoryHistory } from "@remix-run/router";
+import type { Update } from "history";
 import type { AssetsManifest, EntryContext } from "@remix-run/react/dist/entry";
 import type { RouteData } from "@remix-run/react/dist/routeData";
 import type {
@@ -17,14 +28,6 @@ import type {
   RouteModules,
 } from "@remix-run/react/dist/routeModules";
 import type { EntryRoute, RouteManifest } from "@remix-run/react/dist/routes";
-import type { ShouldReloadFunction } from "@remix-run/react";
-import type {
-  ErrorBoundaryComponent,
-  LinksFunction,
-  MetaFunction,
-} from "@remix-run/server-runtime";
-import type { InitialEntry } from "@remix-run/router";
-import type { MemoryHistory, Update } from "history";
 
 /**
  * Base RouteObject with common props shared by all types of mock routes
@@ -133,9 +136,13 @@ export function createRemixStub(routes: MockRouteObject[]) {
       initialActionData
     );
 
-    // Mock the window location
-    // TODO: Will this work everywhere?
-    window.location.assign("https://unknown/" + state.location.pathname);
+    // Set the window location since Remix expects a valid window.location.
+    // TODO: This is likely the wrong approach and doesn't build URL correctly with all variants.
+    if (!window.location.hostname) {
+      window.location.assign(
+        `https://unknown${state.location.pathname}${state.location.search}`
+      );
+    }
 
     // Setup request handler to handle requests to the mock routes
     const handler = createStaticHandler(routes);
@@ -161,7 +168,6 @@ function createRemixContext(
   initialActionData?: RouteData
 ): EntryContext {
   const matches = matchRoutes(routes, currentLocation.pathname);
-
   return {
     actionData: initialActionData,
     appState: {
@@ -224,7 +230,16 @@ function monkeyPatchFetch(handler: StaticHandler) {
     const request = new Request(input, init);
     try {
       // Send the request to mock routes via @remix-run/router.
-      return await handler.queryRoute(request);
+      const response = await handler.queryRoute(request);
+
+      if (response instanceof Response) {
+        return response;
+      }
+
+      return new Response(response, {
+        status: 200,
+        headers: { contentType: "application/json" },
+      });
     } catch (error) {
       if (error instanceof Response) {
         // 404 or 405 responses passthrough to the original fetch as mock routes couldn't handle the request.
@@ -232,6 +247,7 @@ function monkeyPatchFetch(handler: StaticHandler) {
           return originalFetch(input, init);
         }
       }
+
       throw error;
     }
   };

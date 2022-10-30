@@ -1,4 +1,4 @@
-import { useFetcher, useFormAction } from "@remix-run/react";
+import { useFetcher } from "@remix-run/react";
 import { Button } from "./Button";
 
 export interface LikeButtonProps {

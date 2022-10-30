@@ -10,10 +10,11 @@ const config: StorybookConfig = {
     builder: "@storybook/builder-vite",
   },
   async viteFinal(config, options) {
-    // Add your configuration here
-    config.optimizeDeps = {
-      exclude: ["@remix-run/react"],
-      include: ["@remix-run/react/dist/components.js"],
+    // Due to the deep imports vite will double import/bundle the RemixEntry component without this.
+    config.resolve = {
+      alias: {
+        "@remix-run/react/dist/components": "@remix-run/react/dist/esm/components",
+      },
     };
     return config;
   },
