@@ -167,7 +167,12 @@ function createRemixContext(
   initialLoaderData: RouteData,
   initialActionData?: RouteData
 ): EntryContext {
-  const matches = matchRoutes(routes, currentLocation.pathname);
+  const manifest = createManifest(routes);
+  const matches = matchRoutes(
+    Object.values(manifest.routes),
+    currentLocation
+  );
+
   return {
     actionData: initialActionData,
     appState: {
@@ -179,9 +184,9 @@ function createRemixContext(
       error: undefined,
       catch: undefined,
     },
-    matches: matches as unknown as EntryContext["matches"],
+    matches: matches || [],
     routeData: initialLoaderData,
-    manifest: createManifest(routes),
+    manifest: manifest,
     routeModules: createRouteModules(routes),
   };
 }
@@ -229,7 +234,8 @@ function monkeyPatchFetch(handler: StaticHandler) {
   ): Promise<Response> => {
     const request = new Request(input, init);
     try {
-      // Send the request to mock routes via @remix-run/router.
+      // Send the request to mock routes via @remix-run/router rather than the normal
+      // @remix-run/server-runtime so that stubs can also be used in browser environments.
       const response = await handler.queryRoute(request);
 
       if (response instanceof Response) {
