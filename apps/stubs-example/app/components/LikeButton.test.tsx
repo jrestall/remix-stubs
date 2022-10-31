@@ -56,7 +56,9 @@ describe("LikeButton", () => {
       />
     );
     await waitFor(() => screen.getByRole("button"));
+
     expect(screen.getByRole("button").innerHTML).toMatch("🤍");
+    expect(screen.getByLabelText("Like Fake Post")).toBeDefined();
   });
 
   // In this test we no longer need to mock useFetcher return values, the test
@@ -81,30 +83,4 @@ describe("LikeButton", () => {
     // expect to still see the heart
     expect(screen.getByText("💗")).toBeDefined();
   });
-
-  /*it("optimistically renders the heart", async () => {
-    render(
-      <RemixStub
-        initialEntries={["/post/123"]}
-        initialLoaderData={{ "/post/:postId": fakePost }}
-      />
-    );
-    fireEvent.click(screen.getByRole("button"));
-
-    // check optimistic render, we haven't resolved the action or loader yet
-    await waitFor(() => screen.getByText("♥"));
-    expect(screen.getByText("♥")).toBeDefined();
-
-    // manually resolve the action, this is just something the person writing the
-    // test could set up on the routes in the test with a `deferred()`
-    // implementation.
-    await actionDeferred.resolve(true);
-    // assert it's still a filled in heart after the action resolves
-    expect(screen.getByText("♥")).toBeDefined();
-
-    // finally resolve the loader with the new record
-    await loaderDeferred.resolve({ title: "fake", liked: true });
-    // assert it's still a filled in heart
-    expect(screen.getByText("♥")).toBeDefined();
-  });*/
 });

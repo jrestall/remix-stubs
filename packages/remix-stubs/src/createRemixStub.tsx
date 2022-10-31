@@ -1,26 +1,28 @@
 import React from "react";
 import {
-  createMemoryHistory,
   unstable_createStaticHandler as createStaticHandler,
-  StaticHandler,
-  LoaderFunction,
-  ActionFunction,
   matchRoutes,
-  Location,
 } from "@remix-run/router";
+import { createMemoryHistory } from "history";
 
 // FIX: This nested import breaks vite's dev bundling and needs a workaround in /.storybook/main.ts
 //      Hopefully an equivalent will be properly exported in Remix v2.
 import { RemixEntry } from "@remix-run/react/dist/components";
 
+import type { MemoryHistory, Update } from "history";
 import type { ShouldReloadFunction } from "@remix-run/react";
 import type {
   ErrorBoundaryComponent,
   LinksFunction,
   MetaFunction,
 } from "@remix-run/server-runtime";
-import type { InitialEntry, MemoryHistory } from "@remix-run/router";
-import type { Update } from "history";
+import type {
+  InitialEntry,
+  StaticHandler,
+  LoaderFunction,
+  ActionFunction,
+  Location,
+} from "@remix-run/router";
 import type { AssetsManifest, EntryContext } from "@remix-run/react/dist/entry";
 import type { RouteData } from "@remix-run/react/dist/routeData";
 import type {
@@ -109,7 +111,6 @@ export function createRemixStub(routes: MockRouteObject[]) {
     initialIndex,
   }: RemixStubOptions) {
     const historyRef = React.useRef<MemoryHistory>();
-
     if (historyRef.current == null) {
       historyRef.current = createMemoryHistory({
         initialEntries: initialEntries,
@@ -168,10 +169,7 @@ function createRemixContext(
   initialActionData?: RouteData
 ): EntryContext {
   const manifest = createManifest(routes);
-  const matches = matchRoutes(
-    Object.values(manifest.routes),
-    currentLocation
-  );
+  const matches = matchRoutes(Object.values(manifest.routes), currentLocation);
 
   return {
     actionData: initialActionData,
@@ -226,9 +224,9 @@ function createRouteModules(routes: MockRouteObject[]): RouteModules {
   }, {} as RouteModules);
 }
 
+const originalFetch = typeof global !== "undefined" ? global.fetch : window.fetch;
 function monkeyPatchFetch(handler: StaticHandler) {
-  const originalFetch = window.fetch;
-  window.fetch = async (
+  const fetchPatch = async (
     input: RequestInfo | URL,
     init: RequestInit = {}
   ): Promise<Response> => {
@@ -257,4 +255,10 @@ function monkeyPatchFetch(handler: StaticHandler) {
       throw error;
     }
   };
+
+  if (typeof global !== "undefined") {
+    global.fetch = fetchPatch;
+  } else {
+    window.fetch = fetchPatch;
+  }
 }

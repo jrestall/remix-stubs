@@ -28,9 +28,10 @@ export function LikeButton({ liked, label, href }: LikeButtonProps) {
       liked;
 
   return (
-    <>
-      <div>{label}</div>
-      <Button label={isLiked ? "💗" : "🤍"} onClick={onClick} />
-    </>
+    <Button
+      aria-label={label}
+      label={isLiked ? "💗" : "🤍"}
+      onClick={onClick}
+    />
   );
 }
