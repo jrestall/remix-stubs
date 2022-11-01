@@ -27,7 +27,7 @@ export async function action({ request }: ActionArgs) {
     );
   }
 
-  const note = await createNote({ title, body, userId });
+  const note = await createNote(body, title, userId);
 
   return redirect(`/notes/${note.id}`);
 }
@@ -59,6 +59,7 @@ export default function NewNotePage() {
         <label className="flex w-full flex-col gap-1">
           <span>Title: </span>
           <input
+            type="text"
             ref={titleRef}
             name="title"
             className="flex-1 rounded-md border-2 border-blue-500 px-3 text-lg leading-loose"

@@ -1,4 +1,4 @@
-import "@testing-library/jest-dom/extend-expect";
+import "@testing-library/jest-dom";
 import { JSDOM } from "jsdom";
 
 // Workaround: For some reason FormData is not set to jsdom's by default
