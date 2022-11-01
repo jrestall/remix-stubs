@@ -224,7 +224,8 @@ function createRouteModules(routes: MockRouteObject[]): RouteModules {
   }, {} as RouteModules);
 }
 
-const originalFetch = typeof global !== "undefined" ? global.fetch : window.fetch;
+const originalFetch =
+  typeof global !== "undefined" ? global.fetch : window.fetch;
 function monkeyPatchFetch(handler: StaticHandler) {
   const fetchPatch = async (
     input: RequestInfo | URL,

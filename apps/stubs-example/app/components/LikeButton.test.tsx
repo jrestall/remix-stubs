@@ -1,12 +1,9 @@
-import { describe, it, afterEach, expect } from "vitest";
 import { render, waitFor, screen, fireEvent } from "@testing-library/react";
 import { useLoaderData } from "@remix-run/react";
 import { createRemixStub } from "remix-stubs";
 import { LikeButton } from "./LikeButton";
 
 // Example implementation of Ryan Florence's tests from https://github.com/remix-run/remix/discussions/2481
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 describe("LikeButton", () => {
   // set up a fake "database" record again
@@ -22,8 +19,6 @@ describe("LikeButton", () => {
     {
       path: "/post/:postId/like",
       action: async ({ request }) => {
-        // add some delay to test the optimistic UI
-        await sleep(100);
         let formData = await request.formData();
         fakePost.liked = JSON.parse(formData.get("liked") as string);
         return null;
@@ -38,7 +33,7 @@ describe("LikeButton", () => {
       <LikeButton
         liked={post.liked}
         label={post.liked ? `Unlike ${post.title}` : `Like ${post.title}`}
-        href={`/post/${post.id}/like`}
+        action={`/post/${post.id}/like`}
       />
     );
   }
@@ -57,7 +52,7 @@ describe("LikeButton", () => {
     );
     await waitFor(() => screen.getByRole("button"));
 
-    expect(screen.getByRole("button").innerHTML).toMatch("🤍");
+    expect(screen.getByRole("button").innerHTML).toMatch("♡");
     expect(screen.getByLabelText("Like Fake Post")).toBeDefined();
   });
 
@@ -72,7 +67,7 @@ describe("LikeButton", () => {
       />
     );
     fireEvent.click(screen.getByRole("button"));
-    await waitFor(() => screen.getByText("💗"));
+    await waitFor(() => screen.getByText("♥"));
 
     // assert it's optimistic, our action will not have changed this yet
     expect(fakePost.liked).toBe(false);
@@ -81,6 +76,6 @@ describe("LikeButton", () => {
     await waitFor(() => fakePost.liked === true);
 
     // expect to still see the heart
-    expect(screen.getByText("💗")).toBeDefined();
+    expect(screen.getByText("♥")).toBeDefined();
   });
 });

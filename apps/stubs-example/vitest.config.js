@@ -8,10 +8,14 @@ import tsconfigPaths from "vite-tsconfig-paths";
 export default defineConfig({
   plugins: [react(), tsconfigPaths()],
   test: {
+    testTimeout: 50000,
     globals: true,
-    environment: "happy-dom",
+    // happy-dom doesn't support button submit or FormData
+    // https://github.com/capricorn86/happy-dom/issues/527
+    // https://github.com/capricorn86/happy-dom/issues/585
+    environment: "jsdom",
     setupFiles: ["./test/setup-test-env.ts"],
-    include: ["./app/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
+    include: ["./**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
     watchExclude: [
       ".*\\/node_modules\\/.*",
       ".*\\/build\\/.*",

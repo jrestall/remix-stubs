@@ -1,37 +1,30 @@
 import { useFetcher } from "@remix-run/react";
-import { Button } from "./Button";
 
 export interface LikeButtonProps {
   label: string;
   liked: boolean;
-  href: string;
+  action: string;
 }
 
-export function LikeButton({ liked, label, href }: LikeButtonProps) {
-  const fetcher = useFetcher();
-
-  const onClick = () =>
-    fetcher.submit(
-      {
-        liked: liked ? "true" : "false",
-      },
-      {
-        method: "post",
-        action: href,
-      }
-    );
-
-  const isLiked = fetcher.submission
-    ? // use the optimistic version
-      Boolean(fetcher.submission.formData.get("liked"))
-    : // use the normal version
-      liked;
-
+export function LikeButton({ liked, label, action }: LikeButtonProps) {
+  let fetcher = useFetcher();
+  let isLiked = fetcher.submission?.formData?.get("liked") ?? liked;
   return (
-    <Button
-      aria-label={label}
-      label={isLiked ? "💗" : "🤍"}
-      onClick={onClick}
-    />
+    <fetcher.Form method="post" action={action}>
+
+      {/* jsdom doesn't support passing the value of the form submit button since
+          it filters out all buttons from form data in the following code.
+          https://github.com/jsdom/jsdom/blob/e285763ebf46bbc9c883a519c9a18231f5ede9d8/lib/jsdom/living/xhr/FormData-impl.js#L109 */}
+      <input type="hidden" name="liked" value={isLiked ? "false" : "true"} />
+      
+      <button
+        aria-label={label}
+        name="liked"
+        value={isLiked ? "false" : "true"}
+        type="submit"
+      >
+        {isLiked ? "♥" : "♡"}
+      </button>
+    </fetcher.Form>
   );
 }
