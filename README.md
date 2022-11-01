@@ -8,6 +8,7 @@ An example implementation and usage of Ryan Florence's [createRemixStub design](
 ### Tests
 - [LikeButton.test.tsx](./apps/stubs-example/app/components/LikeButton.test.tsx) for Ryan's Vitest unit testing example.
 - [new.test.tsx](./apps/stubs-example/app/routes/notes/new.test.tsx) for an initialActionData example.
+- [login.test.tsx](./apps/stubs-example/app/routes/login.test.tsx) for a login form submission test with vitest mocks to assert the action has been called once.
 
 Whilst I won't be publishing remix-stubs as a package, since it relies on deep imports from Remix, please do create issues, examples or discussions so that the example implementation can be improved.
 
