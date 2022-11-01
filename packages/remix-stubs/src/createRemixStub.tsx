@@ -30,13 +30,15 @@ import type {
   RouteModules,
 } from "@remix-run/react/dist/routeModules";
 import type { EntryRoute, RouteManifest } from "@remix-run/react/dist/routes";
+import type { AgnosticRouteMatch } from "@remix-run/router/dist/utils";
 
 /**
  * Base RouteObject with common props shared by all types of mock routes
  */
 type BaseMockRouteObject = {
+  id?: string;
   caseSensitive?: boolean;
-  path: string;
+  path?: string;
   element?: React.ReactNode | null;
   loader?: LoaderFunction;
   action?: ActionFunction;
@@ -104,6 +106,8 @@ type RemixStubOptions = {
 };
 
 export function createRemixStub(routes: MockRouteObject[]) {
+  // Setup request handler to handle requests to the mock routes
+  const { dataRoutes, queryRoute } = createStaticHandler(routes);
   return function RemixStub({
     initialEntries = ["/"],
     initialLoaderData = {},
@@ -129,19 +133,20 @@ export function createRemixStub(routes: MockRouteObject[]) {
 
     React.useLayoutEffect(() => history.listen(dispatch), [history]);
 
+    // Convert path based ids in user supplied initial loader/action data to data route ids
+    const loaderData = convertRouteData(dataRoutes, initialLoaderData);
+    const actionData = convertRouteData(dataRoutes, initialActionData);
+
     // Create mock remix context
     const remixContext = createRemixContext(
-      routes,
+      dataRoutes,
       state.location,
-      initialLoaderData,
-      initialActionData
+      loaderData,
+      actionData
     );
 
-    // Setup request handler to handle requests to the mock routes
-    const handler = createStaticHandler(routes);
-
     // Patch fetch so that mock routes can handle action/loader requests
-    monkeyPatchFetch(handler);
+    monkeyPatchFetch(queryRoute);
 
     return (
       <RemixEntry
@@ -157,11 +162,11 @@ export function createRemixStub(routes: MockRouteObject[]) {
 function createRemixContext(
   routes: MockRouteObject[],
   currentLocation: Location,
-  initialLoaderData: RouteData,
+  initialLoaderData?: RouteData,
   initialActionData?: RouteData
 ): EntryContext {
   const manifest = createManifest(routes);
-  const matches = matchRoutes(Object.values(manifest.routes), currentLocation);
+  const matches = matchRoutes(routes, currentLocation) || [];
 
   return {
     actionData: initialActionData,
@@ -174,8 +179,8 @@ function createRemixContext(
       error: undefined,
       catch: undefined,
     },
-    matches: matches || [],
-    routeData: initialLoaderData,
+    matches: convertToEntryRouteMatch(matches),
+    routeData: initialLoaderData || [],
     manifest: manifest,
     routeModules: createRouteModules(routes),
   };
@@ -183,27 +188,36 @@ function createRemixContext(
 
 function createManifest(routes: MockRouteObject[]): AssetsManifest {
   return {
-    routes: routes.reduce((manifest, route) => {
-      manifest[route.path] = {
-        id: route.path,
-        path: route.path,
-        hasAction: !!route.action,
-        hasLoader: !!route.loader,
-        module: "",
-        hasCatchBoundary: !!route.CatchBoundary,
-        hasErrorBoundary: !!route.ErrorBoundary,
-      };
-      return manifest;
-    }, {} as RouteManifest<EntryRoute>),
+    routes: createRouteManifest(routes),
     entry: { imports: [], module: "" },
     url: "",
     version: "",
   };
 }
 
-function createRouteModules(routes: MockRouteObject[]): RouteModules {
+function createRouteManifest(
+  routes: MockRouteObject[],
+  manifest?: RouteManifest<EntryRoute>,
+  parentId?: string
+): RouteManifest<EntryRoute> {
+  return routes.reduce((manifest, route) => {
+    if (route.children) {
+      createRouteManifest(route.children, manifest, route.id);
+    }
+    manifest[route.id!] = convertToEntryRoute(route, parentId);
+    return manifest;
+  }, manifest || {});
+}
+
+function createRouteModules(
+  routes: MockRouteObject[],
+  routeModules?: RouteModules
+): RouteModules {
   return routes.reduce((modules, route) => {
-    modules[route.path] = {
+    if (route.children) {
+      createRouteModules(route.children, modules);
+    }
+    modules[route.id!] = {
       CatchBoundary: route.CatchBoundary,
       ErrorBoundary: route.ErrorBoundary,
       default: () => <>{route.element}</>,
@@ -213,12 +227,12 @@ function createRouteModules(routes: MockRouteObject[]): RouteModules {
       unstable_shouldReload: route.unstable_shouldReload,
     };
     return modules;
-  }, {} as RouteModules);
+  }, routeModules || {});
 }
 
 const originalFetch =
   typeof global !== "undefined" ? global.fetch : window.fetch;
-function monkeyPatchFetch(handler: StaticHandler) {
+function monkeyPatchFetch(queryRoute: StaticHandler["queryRoute"]) {
   const fetchPatch = async (
     input: RequestInfo | URL,
     init: RequestInit = {}
@@ -227,7 +241,7 @@ function monkeyPatchFetch(handler: StaticHandler) {
     try {
       // Send the request to mock routes via @remix-run/router rather than the normal
       // @remix-run/server-runtime so that stubs can also be used in browser environments.
-      const response = await handler.queryRoute(request);
+      const response = await queryRoute(request);
 
       if (response instanceof Response) {
         return response;
@@ -254,4 +268,50 @@ function monkeyPatchFetch(handler: StaticHandler) {
   } else {
     window.fetch = fetchPatch;
   }
+}
+
+function convertToEntryRoute(
+  route: MockRouteObject,
+  parentId?: string
+): EntryRoute {
+  return {
+    id: route.id!,
+    index: route.index,
+    caseSensitive: route.caseSensitive,
+    path: route.path,
+    parentId: parentId,
+    hasAction: !!route.action,
+    hasLoader: !!route.loader,
+    module: "",
+    hasCatchBoundary: !!route.CatchBoundary,
+    hasErrorBoundary: !!route.ErrorBoundary,
+  };
+}
+
+function convertToEntryRouteMatch(
+  routes: AgnosticRouteMatch<string, MockRouteObject>[]
+) {
+  return routes.map((match) => {
+    return {
+      params: match.params,
+      pathname: match.pathname,
+      route: convertToEntryRoute(match.route),
+    };
+  });
+}
+
+// Converts route data from a path based index to a route id index value.
+// e.g. { "/post/:postId": post } to { "0": post }
+function convertRouteData(
+  routes: MockRouteObject[],
+  routeData?: RouteData
+): RouteData | undefined {
+  if (!routeData) return undefined;
+  return Object.keys(routeData).reduce((data, path) => {
+    const routeId = routes.find((route) => route.path === path)?.id;
+    if (routeId) {
+      data[routeId] = routeData[path];
+    }
+    return data;
+  }, {} as RouteData);
 }
