@@ -137,14 +137,6 @@ export function createRemixStub(routes: MockRouteObject[]) {
       initialActionData
     );
 
-    // Set the window location since Remix expects a valid window.location.
-    // TODO: This is likely the wrong approach and doesn't build URL correctly with all variants.
-    if (!window.location.hostname) {
-      window.location.assign(
-        `https://unknown${state.location.pathname}${state.location.search}`
-      );
-    }
-
     // Setup request handler to handle requests to the mock routes
     const handler = createStaticHandler(routes);
 
