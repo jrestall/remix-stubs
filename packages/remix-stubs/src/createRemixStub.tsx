@@ -16,6 +16,7 @@ import type {
   LinksFunction,
   MetaFunction,
 } from "@remix-run/server-runtime";
+import { json } from "@remix-run/server-runtime";
 import type {
   InitialEntry,
   StaticHandler,
@@ -146,7 +147,7 @@ export function createRemixStub(routes: MockRouteObject[]) {
     );
 
     // Patch fetch so that mock routes can handle action/loader requests
-    monkeyPatchFetch(queryRoute);
+    monkeyPatchFetch(queryRoute, dataRoutes);
 
     return (
       <RemixEntry
@@ -232,35 +233,32 @@ function createRouteModules(
 
 const originalFetch =
   typeof global !== "undefined" ? global.fetch : window.fetch;
-function monkeyPatchFetch(queryRoute: StaticHandler["queryRoute"]) {
+function monkeyPatchFetch(
+  queryRoute: StaticHandler["queryRoute"],
+  dataRoutes: StaticHandler["dataRoutes"]
+) {
   const fetchPatch = async (
     input: RequestInfo | URL,
     init: RequestInit = {}
   ): Promise<Response> => {
     const request = new Request(input, init);
-    try {
-      // Send the request to mock routes via @remix-run/router rather than the normal
-      // @remix-run/server-runtime so that stubs can also be used in browser environments.
+    let url = new URL(request.url);
+
+    // if we have matches, send the request to mock routes via @remix-run/router rather than the normal
+    // @remix-run/server-runtime so that stubs can also be used in browser environments.
+    let matches = matchRoutes(dataRoutes, url);
+    if (matches) {
       const response = await queryRoute(request);
 
       if (response instanceof Response) {
         return response;
       }
 
-      return new Response(response, {
-        status: 200,
-        headers: { contentType: "application/json" },
-      });
-    } catch (error) {
-      if (error instanceof Response) {
-        // 404 or 405 responses passthrough to the original fetch as mock routes couldn't handle the request.
-        if (error.status === 404 || error.status === 405) {
-          return originalFetch(input, init);
-        }
-      }
-
-      throw error;
+      return json(response);
     }
+
+    // if no matches, passthrough to the original fetch as mock routes couldn't handle the request.
+    return originalFetch(request, init);
   };
 
   if (typeof global !== "undefined") {
@@ -307,11 +305,11 @@ function convertRouteData(
   routeData?: RouteData
 ): RouteData | undefined {
   if (!routeData) return undefined;
-  return Object.keys(routeData).reduce((data, path) => {
+  return Object.keys(routeData).reduce<RouteData>((data, path) => {
     const routeId = routes.find((route) => route.path === path)?.id;
     if (routeId) {
       data[routeId] = routeData[path];
     }
     return data;
-  }, {} as RouteData);
+  }, {});
 }
