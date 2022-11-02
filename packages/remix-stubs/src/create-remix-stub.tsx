@@ -1,12 +1,12 @@
-import React from "react";
+import * as React from "react";
 import {
   unstable_createStaticHandler as createStaticHandler,
   matchRoutes,
 } from "@remix-run/router";
 import { createMemoryHistory } from "history";
 
-// FIX: This nested import breaks vite's dev bundling and needs a workaround in /.storybook/main.ts
-//      Hopefully an equivalent will be properly exported in Remix v2.
+// TODO - FIX: This nested import breaks vite's dev bundling and needs a workaround in /.storybook/main.ts
+// Hopefully an equivalent will be properly exported in Remix v2.
 import { RemixEntry } from "@remix-run/react/dist/components";
 
 import type { MemoryHistory, Update } from "history";

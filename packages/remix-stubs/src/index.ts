@@ -1,1 +1,1 @@
-export * from "./createRemixStub";
+export * from "./create-remix-stub";

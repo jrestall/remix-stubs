@@ -3,9 +3,12 @@
 An example implementation and usage of Ryan Florence's [createRemixStub design](https://github.com/remix-run/remix/discussions/2481) with Storybook and Vitest.
 
 ## Examples
+
 - [createRemixStub.tsx](./packages/remix-stubs/src/createRemixStub.tsx) for a stub implementation.
 - [preview.tsx](./apps/stubs-example/.storybook/preview.tsx) and [main.ts](apps/stubs-example/.storybook/main.ts) for a Storybook 7.0 w/ Vite example.
+
 ### Tests
+
 - [LikeButton.test.tsx](./apps/stubs-example/app/components/LikeButton.test.tsx) for Ryan's Vitest unit testing example.
 - [new.test.tsx](./apps/stubs-example/app/routes/notes/new.test.tsx) for an initialActionData example.
 - [login.test.tsx](./apps/stubs-example/app/routes/login.test.tsx) for a login form submission test with vitest mocks to assert the action has been called once.

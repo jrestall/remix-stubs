@@ -7,21 +7,6 @@ import { LikeButton } from "./LikeButton";
 let story: Meta<typeof LikeButton> = {
   title: "Example/LikeButton",
   component: LikeButton,
-  // More on argTypes: https://storybook.js.org/docs/react/api/argtypes
-  argTypes: {
-    label: {
-      type: "string",
-      defaultValue: "Fake Post",
-    },
-    action: {
-      type: "string",
-      defaultValue: "/post/1",
-    },
-    liked: {
-      type: "boolean",
-      defaultValue: false,
-    },
-  },
   decorators: [
     (Story) => {
       const [args, updateArgs] = useArgs();

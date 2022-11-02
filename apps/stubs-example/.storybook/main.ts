@@ -13,6 +13,7 @@ const config: StorybookConfig = {
     // Due to the deep imports vite will double import/bundle the RemixEntry component without this.
     config.resolve = {
       alias: {
+        // prettier-ignore
         "@remix-run/react/dist/components": "@remix-run/react/dist/esm/components",
       },
     };
