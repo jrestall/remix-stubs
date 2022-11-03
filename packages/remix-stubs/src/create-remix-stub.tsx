@@ -3,6 +3,7 @@ import {
   unstable_createStaticHandler as createStaticHandler,
   matchRoutes,
 } from "@remix-run/router";
+import { json } from "@remix-run/server-runtime";
 import { createMemoryHistory } from "history";
 
 // TODO - FIX: This nested import breaks vite's dev bundling and needs a workaround in /.storybook/main.ts
@@ -16,7 +17,6 @@ import type {
   LinksFunction,
   MetaFunction,
 } from "@remix-run/server-runtime";
-import { json } from "@remix-run/server-runtime";
 import type {
   InitialEntry,
   StaticHandler,
@@ -248,10 +248,15 @@ function monkeyPatchFetch(
     // @remix-run/server-runtime so that stubs can also be used in browser environments.
     let matches = matchRoutes(dataRoutes, url);
     if (matches) {
-      const response = await queryRoute(request);
+      let response = await queryRoute(request);
 
       if (response instanceof Response) {
         return response;
+      }
+
+      // Mock action returned nothing so return an empty json response
+      if (response === undefined) {
+        response = "{}";
       }
 
       return json(response);

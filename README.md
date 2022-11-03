@@ -4,7 +4,7 @@ An example implementation and usage of Ryan Florence's [createRemixStub design](
 
 ## Examples
 
-- [createRemixStub.tsx](./packages/remix-stubs/src/createRemixStub.tsx) for a stub implementation.
+- [create-remix-stub.tsx](./packages/remix-stubs/src/create-remix-stub.tsx) for a stub implementation.
 - [preview.tsx](./apps/stubs-example/.storybook/preview.tsx) and [main.ts](apps/stubs-example/.storybook/main.ts) for a Storybook 7.0 w/ Vite example.
 
 ### Tests
@@ -28,4 +28,4 @@ There's a few issues and workarounds you will need to be aware of.
 
 ### Storybook
 
-- Due to the deep import of RemixEntry in [createRemixStub](./packages/remix-stubs/src/createRemixStub.tsx) from @remix-run/react, you may find webpack/vite bundles both a esm and cjs version of the components code, which causes React context to be inconsistent. For vite I've added an alias in [.storybook/main.ts](./apps/stubs-example/.storybook/main.ts) as a temporary workaround.
+- Due to the deep import of RemixEntry in [create-remix-stub.tsx](./packages/remix-stubs/src/create-remix-stub.tsx) from @remix-run/react, you may find webpack/vite bundles both a esm and cjs version of the components code, which causes React context to be inconsistent. For vite I've added an alias in [.storybook/main.ts](./apps/stubs-example/.storybook/main.ts) as a temporary workaround.
