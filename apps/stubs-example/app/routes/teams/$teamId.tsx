@@ -1,6 +1,17 @@
-import { Link, useOutletContext, useParams } from "@remix-run/react";
+import {
+  Link,
+  useLoaderData,
+  useOutletContext,
+  useParams,
+} from "@remix-run/react";
+import { json } from "@remix-run/server-runtime";
+
+export function loader() {
+  return json({ ad: "ad" });
+}
 
 export default function Team() {
+  const { ad } = useLoaderData();
   // get list of teams from context
   const [teams] = useOutletContext() as any;
 
@@ -27,6 +38,7 @@ export default function Team() {
           </button>
         </Link>
       </div>
+      <div>{ad}</div>
     </div>
   );
 }

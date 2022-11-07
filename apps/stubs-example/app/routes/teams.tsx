@@ -1,6 +1,13 @@
-import { Link, Outlet, useLocation } from "@remix-run/react";
+import { Link, Outlet, useLoaderData, useLocation } from "@remix-run/react";
+import { json } from "@remix-run/server-runtime";
+
+export function loader() {
+  return json({ subtitle: "View Your Team" });
+}
 
 export default function Teams() {
+  const { subtitle } = useLoaderData();
+
   const teams = [
     {
       id: 1,
@@ -37,6 +44,7 @@ export default function Teams() {
       }}
     >
       <h1>TEAMS</h1>
+      <div>{subtitle}</div>
       <Link to="/" style={{ margin: 8 }}>
         Home
       </Link>

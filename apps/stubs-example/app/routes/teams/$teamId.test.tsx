@@ -24,8 +24,18 @@ describe("Team Route", () => {
   ]);
 
   it("renders the teams from outlet context", async () => {
-    render(<RemixStub initialEntries={["/teams/1"]} />);
+    render(
+      <RemixStub
+        initialEntries={["/teams/1"]}
+        initialLoaderData={{
+          "/": { subtitle: "subtitle" },
+          "/teams/:teamId": { ad: "ad" },
+        }}
+      />
+    );
 
+    expect(screen.getByText("ad")).toBeDefined();
+    expect(screen.getByText("subtitle")).toBeDefined();
     expect(screen.getByText("Team One")).toBeDefined();
   });
 });
