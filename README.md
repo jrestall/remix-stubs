@@ -1,3 +1,5 @@
+:warning: ***Remix has now released [@remix-run/testing](https://www.npmjs.com/package/@remix-run/testing?activeTab=versions) ([example tests](https://github.com/remix-run/remix/blob/dev/packages/remix-testing/__tests__/stub-test.tsx)) which should be used instead of remix-stubs. It has a very similar API so migration is easy. With stubbing now built-in to Remix, remix-stubs won't be updated and only works with older versions of Remix such as <v1.9.***
+
 # remix-stubs
 
 An example implementation and usage of Ryan Florence's [createRemixStub design](https://github.com/remix-run/remix/discussions/2481) with Storybook and Vitest.
